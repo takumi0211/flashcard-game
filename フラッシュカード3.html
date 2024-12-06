@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>単語フラッシュカード</title>
+    <!-- CSSスタイルをここに含めます -->
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #eaeaea;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden; /* アニメーションのためにコンテンツのオーバーフローを隠す */
+        }
+
+        .container {
+            max-width: 400px;
+            width: 100%;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .card {
+            border: none;
+            padding: 20px;
+            margin: 20px 0;
+            cursor: pointer;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-align: center;
+            word-wrap: break-word;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .word {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .meaning {
+            font-size: 24px;
+            color: #ff6b2b;
+        }
+
+        .supplement {
+            font-size: 16px;
+            color: #555;
+            margin-top: 10px;
+        }
+
+        .buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        button i {
+            margin-right: 8px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5);
+        }
+
+        p {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .fly-out {
+            position: absolute; /* 単語を絶対位置で配置 */
+            animation: flyOut 2s forwards; /* 単語が飛び出すアニメーション */
+            font-size: 15px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        @keyframes flyOut {
+            0% { 
+                opacity: 1; 
+                transform: translate(0, 0); 
+            }
+            100% {
+                opacity: 1;  /* 単語が消えないようにする */
+                transform: translate(var(--translate-x), var(--translate-y));
+            }
+        }
+    </style>
+    <!-- Font AwesomeのCSSを含めます -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-hlYHHE3W43Ah9MjPxoH6ZVJhYZzL5i+3LU6SmyPSppENhdI1Ccdz6eGptmPXuF0pzfV1R3zvFy6OfE7Xv23N1g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body>
+    <div class="container">
+        <h1>単語フラッシュカード</h1>
+        <div class="card" id="flashcard">
+            <div class="word" id="word"></div>
+            <div class="meaning" id="meaning" style="display: none;"></div>
+            <div class="supplement" id="supplement" style="display: none;"></div>
+        </div>
+        <div class="buttons">
+            <button id="prevBtn"><i class="fas fa-arrow-left"></i> 前の単語</button>
+            <button id="nextBtn">次の単語 <i class="fas fa-arrow-right"></i></button>
+        </div>
+        <p>スペースキー: 意味を表示・非表示<br>左右矢印キー: 単語を切り替え<br>上下矢印キー: 単語を発散</p>
+        <!-- カウンターを表示する要素を追加 -->
+        <p id="counter">表示された単語数: 0</p>
+        <!-- 飛ばされた単語を表示する領域 -->
+        <div id="archive" class="archive"></div>
+    </div>
+    <!-- JavaScriptコードをここに含めます -->
+    <script>
+        const words = [
+        {word: 'ambush', meaning: '待ち伏せて急襲する', supplement: ''},
+        {word: 'bountiful', meaning: '豊富な', supplement: ''},
+        {word: 'inhale', meaning: '吸い込む', supplement: ''},
+        {word: 'crane', meaning: 'クレーン', supplement: ''},
+        {word: 'inflame', meaning: '掻き立てる', supplement: ''},
+        {word: 'meager', meaning: '乏しい', supplement: ''},
+        {word: 'tripe', meaning: 'くだらないもの', supplement: ''},
+        {word: 'prawn', meaning: 'クルマエビ', supplement: ''},
+        {word: 'offset', meaning: '相殺する', supplement: ''},
+        {word: 'tan', meaning: '日焼けした色', supplement: ''},
+        {word: 'temperate', meaning: '穏やかな', supplement: ''},
+        {word: 'attorney', meaning: '弁護士', supplement: ''},
+        {word: 'placate', meaning: 'なだめる', supplement: ''},
+        {word: 'sea anemone', meaning: 'イソギンチャク', supplement: ''},
+        {word: 'homogeneous', meaning: '均質の', supplement: ''},
+        {word: 'inundate', meaning: '殺到する', supplement: ''},
+        {word: 'taint', meaning: '傷つける', supplement: ''},
+        {word: 'monopoly', meaning: '独占', supplement: ''},
+        {word: 'strain', meaning: '引っ張る', supplement: ''},
+        {word: 'blackout', meaning: '停電', supplement: ''},
+        {word: 'stimulant', meaning: '刺激物', supplement: ''},
+        {word: 'mercantile', meaning: '商業の', supplement: ''},
+        {word: 'utopia', meaning: 'ユートピア', supplement: ''},
+        {word: 'built-in', meaning: '作り付けの', supplement: ''},
+        {word: 'strand', meaning: '立ち往生させる', supplement: ''},
+        {word: 'arsenal', meaning: '兵器庫', supplement: ''},
+        {word: 'insolvent', meaning: '破産した', supplement: ''},
+        {word: 'decree', meaning: '布告', supplement: ''},
+        {word: 'impetus', meaning: '機動力', supplement: ''},
+        {word: 'precipitate', meaning: '引き起こす', supplement: ''},
+        {word: 'intricate', meaning: '複雑な', supplement: ''},
+        {word: 'admonish', meaning: '忠告する', supplement: ''},
+        {word: 'loquacious', meaning: 'おしゃべりの', supplement: ''},
+        {word: 'conviction', meaning: '確信', supplement: ''},
+        {word: 'transplant', meaning: '移籍、移植', supplement: ''},
+        {word: 'amity', meaning: '友好', supplement: ''},
+        {word: 'astronomical', meaning: '(数量が)肥大な', supplement: ''},
+        {word: 'attrition', meaning: '消耗', supplement: ''},
+        {word: 'platypus', meaning: 'カモノハシ', supplement: ''},
+        {word: 'diffuse', meaning: '散らす', supplement: ''},
+        {word: 'intrinsically', meaning: '本質的に', supplement: ''},
+        {word: 'attest', meaning: '証明する', supplement: ''},
+        {word: 'sanitation', meaning: '衛生設備', supplement: ''},
+        {word: 'fiscal', meaning: '財政の', supplement: ''},
+        {word: 'markedly', meaning: '著しく', supplement: ''},
+        {word: 'pasture', meaning: '牧草地', supplement: ''},
+        {word: 'plaintiff', meaning: '原告', supplement: ''},
+        {word: 'ail', meaning: '患う', supplement: ''},
+        {word: 'posture', meaning: '姿勢', supplement: ''},
+        {word: 'verdict', meaning: '評議して決めること', supplement: ''},
+        {word: 'devoid', meaning: '~を欠いている', supplement: ''},
+        {word: 'celebrated', meaning: '有名な', supplement: ''},
+        {word: 'paralysis', meaning: 'まひ', supplement: ''},
+        {word: 'reputed', meaning: '〜という評判の', supplement: ''},
+        {word: 'residue', meaning: '残り', supplement: ''},
+        {word: 'retard', meaning: '遅らせる', supplement: ''},
+        {word: 'anchor', meaning: 'いかりを下ろす', supplement: ''},
+        {word: 'pod', meaning: 'さや(さやえんどうなど)', supplement: ''},
+        {word: 'remit', meaning: '送金する', supplement: ''},
+        {word: 'fathom', meaning: '(深さを）測る', supplement: ''},
+        {word: 'surge', meaning: '群衆の殺到', supplement: ''},
+        {word: 'conductive', meaning: '伝導性の', supplement: ''},
+        {word: 'chuckle', meaning: 'くすくす笑い', supplement: ''},
+        {word: 'sprinkle', meaning: '水をまく', supplement: ''},
+        {word: 'solemn', meaning: '厳粛な', supplement: ''},
+        {word: 'transitory', meaning: '儚い', supplement: ''},
+        {word: 'liaison', meaning: '連絡係', supplement: ''},
+        {word: 'stern', meaning: '厳格な', supplement: ''},
+        {word: 'impede', meaning: '妨げる', supplement: ''},
+        {word: 'peripheral', meaning: '重要ではない', supplement: ''},
+        {word: 'falcon', meaning: 'ハヤブサ', supplement: ''},
+        {word: 'alloy', meaning: '合金', supplement: ''},
+        {word: 'stroll', meaning: 'ぶらつく', supplement: ''},
+        {word: 'refute', meaning: '誤りを証明する', supplement: ''},
+        {word: 'intestine', meaning: '腸', supplement: ''},
+        {word: 'terminology', meaning: '専門用語', supplement: ''},
+        {word: 'singular', meaning: '稀な', supplement: ''},
+        {word: 'monotonous', meaning: '単調な', supplement: ''},
+        {word: 'ingenious', meaning: '才能のある', supplement: ''},
+        {word: 'replenish', meaning: '補給する', supplement: ''},
+        {word: 'coach', meaning: '大型馬車', supplement: ''},
+        {word: 'kidney', meaning: '腎臓', supplement: ''},
+        {word: 'succinct', meaning: '簡潔な', supplement: ''},
+        {word: 'poach', meaning: '密漁する', supplement: ''},
+        {word: 'collapse', meaning: '崩壊', supplement: ''},
+        {word: 'inscribe', meaning: '刻む', supplement: ''},
+        {word: 'hectic', meaning: 'てんやわんやの', supplement: ''},
+        {word: 'suppress', meaning: '抑える', supplement: ''},
+        {word: 'archipelago', meaning: '群島', supplement: ''},
+        {word: 'cascade', meaning: '滝', supplement: ''},
+        {word: 'authoritarian', meaning: '権威主義の', supplement: ''},
+        {word: 'mercy', meaning: '慈悲', supplement: ''},
+        {word: 'savory', meaning: '食欲をそそる', supplement: ''},
+        {word: 'continental shelf', meaning: '大陸棚', supplement: ''},
+        {word: 'radioactive', meaning: '放射性のある', supplement: ''},
+        {word: 'shabby', meaning: '粗雑な', supplement: ''},
+        {word: 'erode', meaning: '蝕む', supplement: ''},
+        {word: 'validate', meaning: '妥当性を立証する', supplement: ''},
+        {word: 'tactics', meaning: '戦術', supplement: ''},
+        {word: 'compelling', meaning: '説得力のある', supplement: ''},
+        {word: 'profusely', meaning: '深く', supplement: ''},
+        {word: 'cursory', meaning: '大まかな', supplement: ''},
+        {word: 'disperse', meaning: '分散させる', supplement: ''},
+        {word: 'overturn', meaning: '横転させる', supplement: ''},
+        {word: 'degrade', meaning: '(格や品位を)落とす', supplement: ''},
+        {word: 'coexistence', meaning: '共存', supplement: ''},
+        {word: 'whirl', meaning: 'ぐるぐる回る', supplement: ''},
+        {word: 'proprietor', meaning: '所有者', supplement: ''},
+        {word: 'discerning', meaning: '洞察力のある', supplement: ''},
+        {word: 'masonry', meaning: '石造物', supplement: ''},
+        {word: 'jolt', meaning: '揺さぶる', supplement: ''},
+        {word: 'mole', meaning: 'もぐら', supplement: ''},
+        {word: 'strive', meaning: '戦う', supplement: ''},
+        {word: 'dispatch', meaning: '急送する', supplement: ''},
+        {word: 'discourse', meaning: '論文', supplement: ''},
+        {word: 'prose', meaning: '散文', supplement: ''},
+        {word: 'smash', meaning: '砕ける', supplement: ''},
+        {word: 'brand', meaning: '烙印を押す', supplement: ''},
+        {word: 'appraise', meaning: '鑑定する', supplement: ''},
+        {word: 'upright', meaning: '真っ直ぐに', supplement: ''},
+        {word: 'withdraw', meaning: '撤退する、引き出す', supplement: ''},
+        {word: 'congregate', meaning: '集まる', supplement: ''},
+        {word: 'allure', meaning: '魅惑する', supplement: ''},
+        {word: 'equity', meaning: '公平', supplement: ''},
+        {word: 'bristle', meaning: '剛毛', supplement: ''},
+        {word: 'leverage', meaning: 'てこの原理', supplement: ''},
+        {word: 'articulate', meaning: 'はっきり述べる', supplement: ''},
+        {word: 'cardiac', meaning: '心臓の', supplement: ''},
+        {word: 'conspicuous', meaning: '目立つ', supplement: ''},
+        {word: 'materialism', meaning: '物質主義', supplement: ''},
+        {word: 'absolute', meaning: '完全に', supplement: ''},
+        {word: 'imprison', meaning: '刑務所に入れる', supplement: ''},
+        {word: 'satire', meaning: '風刺', supplement: ''},
+        {word: 'salvation', meaning: '救済', supplement: ''},
+        {word: 'herald', meaning: '先触れ', supplement: ''},
+        {word: 'dew', meaning: '露', supplement: ''},
+        {word: 'culminate', meaning: '頂点に達する', supplement: ''},
+        {word: 'renounce', meaning: '権利を放棄する', supplement: ''},
+        {word: 'surcharge', meaning: '追加料金', supplement: ''},
+        {word: 'lofty', meaning: '崇高な', supplement: ''},
+        {word: 'dune', meaning: '砂丘', supplement: ''},
+        {word: 'scrutinize', meaning: '詳細に調べる', supplement: ''},
+        {word: 'philanthropist', meaning: '博愛主義者', supplement: ''},
+        {word: 'stoop', meaning: 'かがむ', supplement: ''},
+        {word: 'detain', meaning: '引き留める', supplement: ''},
+        {word: 'seclusion', meaning: '隔離', supplement: ''},
+        {word: 'aloft', meaning: '高く', supplement: ''},
+        {word: 'tranquil', meaning: '穏やかな', supplement: ''},
+        {word: 'shrewd', meaning: '賢い', supplement: ''},
+        {word: 'proposition', meaning: '提案', supplement: ''},
+        {word: 'incite', meaning: '鼓舞する', supplement: ''},
+        {word: 'reckless', meaning: '無謀な', supplement: ''},
+        {word: 'diverge', meaning: '(意見などが)異なる、分岐する', supplement: ''},
+        {word: 'lethal', meaning: '致死の', supplement: ''},
+        {word: 'margin', meaning: '縁', supplement: ''},
+        {word: 'potent', meaning: '有力な', supplement: ''},
+        {word: 'aggression', meaning: '侵害', supplement: ''},
+        {word: 'fringe', meaning: 'へり', supplement: ''},
+        {word: 'assassinate', meaning: '暗殺する', supplement: ''},
+        {word: 'intake', meaning: '摂取量', supplement: ''},
+        {word: 'epilogue', meaning: 'エピローグ', supplement: ''},
+        {word: 'composure', meaning: '落ち着き', supplement: ''},
+        {word: 'insane', meaning: '正気でない', supplement: ''},
+        {word: 'levy', meaning: '徴収する', supplement: ''},
+        {word: 'mutter', meaning: 'ぶつぶつ言う', supplement: ''},
+        {word: 'desperate', meaning: '必死の', supplement: ''},
+        {word: 'inventory', meaning: '在庫の', supplement: ''},
+        {word: 'dismantle', meaning: '分解する', supplement: ''},
+        {word: 'scavenger', meaning: '清掃動物、清掃人', supplement: ''},
+        {word: 'kindle', meaning: '点火する', supplement: ''},
+        {word: 'uprising', meaning: '反乱', supplement: ''},
+        {word: 'reactor', meaning: '原子炉', supplement: ''},
+        {word: 'relic', meaning: '遺跡', supplement: ''},
+        {word: 'tundra', meaning: 'ツンドラ', supplement: ''},
+        {word: 'invoke', meaning: '訴える', supplement: ''},
+        {word: 'meadow', meaning: '牧草地', supplement: ''},
+        {word: 'thrive', meaning: '成長する', supplement: ''},
+        {word: 'pragmatic', meaning: '実践的な', supplement: ''},
+        {word: 'deference', meaning: '服従、敬意', supplement: ''},
+        {word: 'pupa', meaning: 'さなぎ', supplement: ''},
+        {word: 'disclose', meaning: '暴露する', supplement: ''},
+        {word: 'displace', meaning: 'とってかわる', supplement: ''},
+        {word: 'ominous', meaning: '不穏な', supplement: ''},
+        {word: 'oscillate', meaning: '振動する', supplement: ''},
+        {word: 'symptom', meaning: '兆候', supplement: ''},
+        {word: 'deputy', meaning: '代理', supplement: ''},
+        {word: 'agile', meaning: '機敏な', supplement: ''},
+        {word: 'wither', meaning: '衰退する', supplement: ''},
+        {word: 'accompaniment', meaning: '伴奏、付属品', supplement: ''},
+        {word: 'bolster', meaning: '高める', supplement: ''},
+        {word: 'blink', meaning: '見て見ぬふりをする', supplement: ''},
+        {word: 'accumulate', meaning: '集める', supplement: ''},
+        {word: 'appease', meaning: 'なだめる', supplement: ''},
+        {word: 'cruel', meaning: '残酷な', supplement: ''},
+        {word: 'cosmic', meaning: '宇宙の', supplement: ''},
+        {word: 'insolent', meaning: '横柄な', supplement: ''},
+        {word: 'nostalgia', meaning: '郷愁', supplement: ''},
+        {word: 'abruptly', meaning: '突然に', supplement: ''},
+        {word: 'invert', meaning: '逆にする', supplement: ''},
+        {word: 'oblique', meaning: '斜めの', supplement: ''},
+        {word: 'reconcile', meaning: '和解させる', supplement: ''},
+        {word: 'coffin', meaning: '棺', supplement: ''},
+        {word: 'lucrative', meaning: '利益が上がる', supplement: ''},
+        {word: 'prosecution', meaning: '起訴', supplement: ''},
+        {word: 'submerge', meaning: '水に浸す', supplement: ''},
+        {word: 'dividend', meaning: '配当', supplement: ''},
+        {word: 'endorse', meaning: '裏書きをする、承認する', supplement: ''},
+        {word: 'confine', meaning: '制限する、閉じ込める', supplement: ''},
+        {word: 'indecisive', meaning: '優柔不断の', supplement: ''},
+        {word: 'ritual', meaning: '儀式', supplement: ''},
+        {word: 'conceive', meaning: '思いつく', supplement: ''},
+        {word: 'spur', meaning: '刺激する', supplement: ''},
+        {word: 'wrath', meaning: '激怒', supplement: ''},
+        {word: 'obliterate', meaning: '完全に破壊する', supplement: ''},
+        {word: 'apathy', meaning: '無感動', supplement: ''},
+        {word: 'surpass', meaning: '勝る', supplement: ''},
+        {word: 'realm', meaning: '領域、王国', supplement: ''},
+        {word: 'intervene', meaning: '仲裁をする', supplement: ''},
+        {word: 'defiance', meaning: '挑戦', supplement: ''},
+        {word: 'frail', meaning: '脆い', supplement: ''},
+        {word: 'deliberate', meaning: '計画的な', supplement: ''},
+        {word: 'leukemia', meaning: '白血病', supplement: ''},
+        {word: 'feudal', meaning: '封建的な', supplement: ''},
+        {word: 'municipal', meaning: '地方自治体の', supplement: ''},
+        {word: 'meddle', meaning: '干渉する', supplement: ''},
+        {word: 'monarchy', meaning: '君主国', supplement: ''},
+        {word: 'turbulent', meaning: '騒々しい', supplement: ''},
+        {word: 'collective', meaning: '集団的な', supplement: ''},
+        {word: 'prodigal', meaning: '浪費する', supplement: ''},
+        {word: 'outset', meaning: '着手', supplement: ''},
+        {word: 'pastime', meaning: '娯楽', supplement: ''},
+        {word: 'soot', meaning: 'すす', supplement: ''},
+        {word: 'brittle', meaning: '脆い', supplement: ''},
+        {word: 'paddy field', meaning: '水田', supplement: ''},
+        {word: 'lucid', meaning: 'わかりやすい', supplement: ''},
+        {word: 'cradle', meaning: 'ゆりかご', supplement: ''},
+        {word: 'penetrate', meaning: '貫く', supplement: ''},
+        {word: 'abide', meaning: '守る', supplement: ''},
+        {word: 'converge', meaning: '集中する', supplement: ''},
+        {word: 'decomposer', meaning: 'バクテリアなどの分解生物', supplement: ''},
+        {word: 'tangible', meaning: '有形な', supplement: ''},
+        {word: 'distrust', meaning: '疑惑', supplement: ''},
+        {word: 'empirical', meaning: '実験に基づいた', supplement: ''},
+        {word: 'ambivalence', meaning: '相反する感情', supplement: ''},
+        {word: 'contempt', meaning: 'さげすみ', supplement: ''},
+        {word: 'console', meaning: '慰める', supplement: ''},
+        {word: 'volatile', meaning: '揮発性の', supplement: ''},
+        {word: 'eccentric', meaning: '常軌を逸した', supplement: ''},
+        {word: 'alleviate', meaning: '和らげる', supplement: ''},
+        {word: 'credulity', meaning: 'すぐに信じ込む性格', supplement: ''},
+        {word: 'elapse', meaning: '経過する', supplement: ''},
+        {word: 'exile', meaning: '追放', supplement: ''},
+        {word: 'addiction', meaning: '常用、ふけること、依存症', supplement: ''},
+        {word: 'distort', meaning: '歪める', supplement: ''},
+        {word: 'commence', meaning: '始める', supplement: ''},
+        {word: 'zealot', meaning: '熱狂する人', supplement: ''},
+        {word: 'finesse', meaning: '技巧', supplement: ''},
+        {word: 'numb', meaning: 'かじかんだ', supplement: ''},
+        {word: 'conifer', meaning: '針葉樹', supplement: ''},
+        {word: 'tractable', meaning: '扱いやすい', supplement: ''},
+        {word: 'stalk', meaning: '茎', supplement: ''},
+        {word: 'husbandry', meaning: '農業', supplement: ''},
+        {word: 'torture', meaning: '拷問', supplement: ''},
+        {word: 'infringe', meaning: '権利を侵害する', supplement: ''},
+        {word: 'momentous', meaning: '重大な', supplement: ''},
+        {word: 'incur', meaning: '負債などを被る', supplement: ''},
+        {word: 'affliction', meaning: '苦痛', supplement: ''},
+        {word: 'extort', meaning: '強要する', supplement: ''},
+        {word: 'tame', meaning: '調教する', supplement: ''},
+        {word: 'consecutive', meaning: '連続的な', supplement: ''},
+        {word: 'segregation', meaning: '人種差別', supplement: ''},
+        {word: 'heterogeneous', meaning: '不均質の', supplement: ''},
+        {word: 'periphery', meaning: '周辺部', supplement: ''},
+        {word: 'insecticide', meaning: '殺虫剤', supplement: ''},
+        {word: 'rebellion', meaning: '反乱', supplement: ''},
+        {word: 'pupil', meaning: '瞳孔', supplement: ''},
+        {word: 'infallible', meaning: '絶対に確実な', supplement: ''},
+        {word: 'blatant', meaning: '図々しい', supplement: ''},
+        {word: 'blanket', meaning: '覆う', supplement: ''},
+        {word: 'rugged', meaning: '険しい', supplement: ''},
+        {word: 'notoriety', meaning: '悪評', supplement: ''},
+        {word: 'infer', meaning: '推測する', supplement: ''},
+        {word: 'Neptune', meaning: '海王星', supplement: ''},
+        {word: 'oblivion', meaning: '忘却', supplement: ''},
+        {word: 'innate', meaning: '生来の', supplement: ''},
+        {word: 'formidable', meaning: '手強い', supplement: ''},
+        {word: 'luminous', meaning: '光り輝く', supplement: ''},
+        {word: 'communal', meaning: '共同の', supplement: ''},
+        {word: 'nuisance', meaning: '迷惑な行動', supplement: ''},
+        {word: 'incompatible', meaning: '馬が合わない', supplement: ''},
+        {word: 'ascertain', meaning: '確かめる', supplement: ''},
+        {word: 'gale', meaning: '疾風', supplement: ''},
+        {word: 'lateral', meaning: '横の', supplement: ''},
+        {word: 'miscellaneous', meaning: '種々雑多な', supplement: ''},
+        {word: 'rubble', meaning: '石くず', supplement: ''},
+        {word: 'fluorescence', meaning: '蛍光発光', supplement: ''},
+        {word: 'inception', meaning: '開始', supplement: ''},
+        {word: 'allotment', meaning: '割り当て', supplement: ''},
+        {word: 'render', meaning: '与える', supplement: ''},
+        {word: 'submissive', meaning: '従順な', supplement: ''},
+        {word: 'outright', meaning: '率直に', supplement: ''},
+        {word: 'nominal', meaning: '名ばかりの', supplement: ''},
+        {word: 'burden', meaning: '負担', supplement: ''},
+        {word: 'frugal', meaning: '質素な', supplement: ''},
+        {word: 'dubious', meaning: 'いかがわしい', supplement: ''},
+        {word: 'cardinal', meaning: '主要な', supplement: ''},
+        {word: 'tacit', meaning: '無言の', supplement: ''},
+        {word: 'mucous membrane', meaning: '粘膜', supplement: ''},
+        {word: 'grim', meaning: '険しい', supplement: ''},
+        {word: 'catastrophe', meaning: '大変動', supplement: ''},
+        {word: 'barely', meaning: 'かろうじて', supplement: ''},
+        {word: 'ardent', meaning: '熱心な', supplement: ''},
+        {word: 'stake', meaning: '利害', supplement: ''},
+        {word: 'jargon', meaning: '特殊用語', supplement: ''},
+        {word: 'emancipate', meaning: '解放する', supplement: ''},
+        {word: 'simultaneous', meaning: '同時に起こる', supplement: ''},
+        {word: 'quarry', meaning: '(石などを)切り出す', supplement: ''},
+        {word: 'counterpart', meaning: '対応する人やもの', supplement: ''},
+        {word: 'pasteurization', meaning: '低温殺菌', supplement: ''},
+        {word: 'hay', meaning: '干し草', supplement: ''},
+        {word: 'unearth', meaning: '明るみに出す', supplement: ''},
+        {word: 'relevancy', meaning: '関連性', supplement: ''},
+        {word: 'runoff', meaning: '地面を流れる雨水', supplement: ''},
+        {word: 'sodium', meaning: 'ナトリウム', supplement: ''},
+        {word: 'coherent', meaning: '首尾一貫した', supplement: ''},
+        {word: 'oppression', meaning: '圧迫', supplement: ''},
+        {word: 'enmity', meaning: '敵意', supplement: ''},
+        {word: 'bovine', meaning: 'ウシ科の', supplement: ''},
+        {word: 'reclaim', meaning: '開墾する', supplement: ''},
+        {word: 'apathetic', meaning: '無関心な', supplement: ''},
+        {word: 'mitigate', meaning: '和らげる', supplement: ''},
+        {word: 'tribute', meaning: '賛辞', supplement: ''},
+        {word: 'esteem', meaning: '尊敬する', supplement: ''},
+        {word: 'intrude', meaning: '侵入する', supplement: ''},
+        {word: 'glossary', meaning: '用語解説', supplement: ''},
+        {word: 'elliptical', meaning: '楕円の', supplement: ''},
+        {word: 'whisker', meaning: 'ひげ', supplement: ''},
+        {word: 'setback', meaning: '後転', supplement: ''},
+        {word: 'affirmative', meaning: '賛成の', supplement: ''},
+        {word: 'crescent', meaning: '三日月', supplement: ''},
+        {word: 'eulogy', meaning: '賛辞', supplement: ''},
+        {word: 'sparrow', meaning: '雀', supplement: ''},
+        {word: 'tempt', meaning: '誘惑する', supplement: ''},
+        {word: 'inoculation', meaning: '予防接種', supplement: ''},
+        {word: 'incidental', meaning: '臨時の、偶然', supplement: ''},
+        {word: 'embellish', meaning: '飾る', supplement: ''},
+        {word: 'insensitive', meaning: '無関心な', supplement: ''},
+        {word: 'elusive', meaning: '理解しにくい', supplement: ''},
+        {word: 'embryonic', meaning: '胎児の', supplement: ''},
+        {word: 'freight', meaning: '貨物', supplement: ''},
+        {word: 'agent', meaning: '成分、物質', supplement: ''},
+        {word: 'creditor', meaning: '債権者', supplement: ''},
+        {word: 'exploit', meaning: '活用する', supplement: ''},
+        {word: 'candor', meaning: '素直さ', supplement: ''},
+        {word: 'shred', meaning: 'シュレッダーの(名)動詞版', supplement: ''},
+        {word: 'foresight', meaning: '先見', supplement: ''},
+        {word: 'clemency', meaning: '寛大さ', supplement: ''},
+        {word: 'methodical', meaning: '秩序だった', supplement: ''},
+        {word: 'rectify', meaning: '改正する', supplement: ''},
+        {word: 'scrape', meaning: 'こすり取る', supplement: ''},
+        {word: 'precipitous', meaning: '険しい', supplement: ''},
+        {word: 'animate', meaning: '活気づける', supplement: ''},
+        {word: 'baroque', meaning: 'バロック式の', supplement: ''},
+        {word: 'disintegrate', meaning: '崩壊する', supplement: ''},
+        {word: 'nullify', meaning: '無効にする', supplement: ''},
+        {word: 'myriad', meaning: '無数', supplement: ''},
+        {word: 'phonetic', meaning: '音声上の', supplement: ''},
+        {word: 'chaotic', meaning: '混沌とした', supplement: ''},
+        {word: 'meticulously', meaning: '綿密に', supplement: ''},
+        {word: 'poultry', meaning: '家禽', supplement: ''},
+        {word: 'anthropology', meaning: '人類学', supplement: ''},
+        {word: 'upheaval', meaning: '激変', supplement: ''},
+        {word: 'impair', meaning: '損なう', supplement: ''},
+        {word: 'exoskeleton', meaning: '外骨格', supplement: ''},
+        {word: 'thrifty', meaning: 'つましい、倹約な', supplement: ''},
+        {word: 'precaution', meaning: '予防', supplement: ''},
+        {word: 'latent', meaning: '潜伏している', supplement: ''},
+        {word: 'liner', meaning: '定期船', supplement: ''},
+        {word: 'huddle', meaning: '体を寄せ合う', supplement: ''},
+        {word: 'besiege', meaning: '包囲する', supplement: ''},
+        {word: 'common sense', meaning: '良識', supplement: ''},
+        {word: 'perish', meaning: '腐る', supplement: ''},
+        {word: 'touchy', meaning: '厄介な', supplement: ''},
+        {word: 'retiring', meaning: '内気な', supplement: ''},
+        {word: 'peril', meaning: '危険', supplement: ''},
+        {word: 'profusion', meaning: '豊富', supplement: ''},
+        {word: 'abstain', meaning: '慎む', supplement: ''},
+        {word: 'preside', meaning: '司会する', supplement: ''},
+        {word: 'predominant', meaning: '圧倒的な', supplement: ''},
+        {word: 'bizarre', meaning: '風変わりな', supplement: ''},
+        {word: 'bewilder', meaning: '当惑させる', supplement: ''},
+        {word: 'deplore', meaning: '非難する', supplement: ''},
+        {word: 'oxidize', meaning: '酸化する', supplement: ''},
+        {word: 'authenticate', meaning: '本物であると証明する', supplement: ''},
+        {word: 'futile', meaning: '無駄な', supplement: ''},
+        {word: 'plead', meaning: '弁護する', supplement: ''},
+        {word: 'mend', meaning: '補修する', supplement: ''},
+        {word: 'sluggish', meaning: '停滞した', supplement: ''},
+        {word: 'spawn', meaning: '卵', supplement: ''},
+        {word: 'indispensable', meaning: '不可欠の', supplement: ''},
+        {word: 'gum', meaning: '歯茎', supplement: ''},
+        {word: 'veto', meaning: '拒否権', supplement: ''},
+        {word: 'psychiatrist', meaning: '精神科医', supplement: ''},
+        {word: 'liability', meaning: '責任', supplement: ''},
+        {word: 'seismology', meaning: '地震学', supplement: ''},
+        {word: 'ordinance', meaning: '法令', supplement: ''},
+        {word: 'herbicide', meaning: '除草剤', supplement: ''},
+        {word: 'rookery', meaning: '集団繁殖地', supplement: ''},
+        {word: 'appendix', meaning: '付録', supplement: ''},
+        {word: 'topography', meaning: '地形', supplement: ''},
+        {word: 'mediate', meaning: '仲介する', supplement: ''},
+        {word: 'coagulate', meaning: '凝固する', supplement: ''},
+        {word: 'anonymity', meaning: '匿名者', supplement: ''},
+        {word: 'unwarranted', meaning: '不当な', supplement: ''},
+        {word: 'coniferous tree', meaning: '針葉樹', supplement: ''},
+        {word: 'makeshift', meaning: '間に合わせの', supplement: ''},
+        {word: 'smother', meaning: '（火などを）消す', supplement: ''},
+        {word: 'tangle', meaning: '紛糾する', supplement: ''},
+        {word: 'taper', meaning: '先細りになること', supplement: ''},
+        {word: 'redundant', meaning: '余分な', supplement: ''},
+        {word: 'replicate', meaning: '複製する', supplement: ''},
+        {word: 'procession', meaning: '行列', supplement: ''},
+        {word: 'celestial', meaning: '天の', supplement: ''},
+        {word: 'sophistication', meaning: '洗礼された考え', supplement: ''},
+        {word: 'dine', meaning: '食事をする', supplement: ''},
+        {word: 'heredity', meaning: '遺伝', supplement: ''},
+        {word: 'aberration', meaning: '異常', supplement: ''},
+        {word: 'marital', meaning: '結婚の', supplement: ''},
+        {word: 'exert', meaning: '努力する', supplement: ''},
+        {word: 'illusive', meaning: '錯覚を起こさせる', supplement: ''},
+        {word: 'stockpile', meaning: '備蓄する', supplement: ''},
+        {word: 'greenback', meaning: '米ドル紙幣', supplement: ''},
+        {word: 'coercion', meaning: '強制', supplement: ''},
+        {word: 'offshore', meaning: 'オフショアの', supplement: ''},
+        {word: 'lapse', meaning: '失う', supplement: ''},
+        {word: 'whistle', meaning: '口笛を吹く', supplement: ''},
+        {word: 'audit', meaning: '監査する', supplement: ''},
+        {word: 'tow', meaning: 'けん引する', supplement: ''},
+        {word: 'jurisdiction', meaning: '管轄権', supplement: ''},
+        {word: 'dissident', meaning: '反体制派（の人）', supplement: ''},
+        {word: 'dismiss', meaning: '解雇する', supplement: ''},
+        {word: 'enlightenment', meaning: '啓蒙', supplement: ''},
+        {word: 'evergreen', meaning: '常緑の', supplement: ''},
+        {word: 'levity', meaning: '軽薄', supplement: ''},
+        {word: 'wharf', meaning: '埠頭', supplement: ''},
+        {word: 'defame', meaning: '中傷する', supplement: ''},
+        {word: 'energize', meaning: '元気付ける', supplement: ''},
+        {word: 'seismic', meaning: '地震の', supplement: ''},
+        {word: 'buoy', meaning: 'ブイ', supplement: ''},
+        {word: 'ardor', meaning: '熱心', supplement: ''},
+        {word: 'siege', meaning: '包囲', supplement: ''},
+        {word: 'mirage', meaning: '蜃気楼', supplement: ''},
+        {word: 'transparent', meaning: '透明な', supplement: ''},
+        {word: 'credence', meaning: '信用', supplement: ''},
+        {word: 'flux', meaning: '流れ', supplement: ''},
+        {word: 'lumber', meaning: 'のしのし歩く', supplement: ''},
+        {word: 'solitary', meaning: '孤独', supplement: ''},
+        {word: 'hinder', meaning: '妨害する', supplement: ''},
+        {word: 'constraint', meaning: '制約', supplement: ''},
+        {word: 'divergent', meaning: '異なる', supplement: ''},
+        {word: 'integrate', meaning: '統一する', supplement: ''},
+        {word: 'anomaly', meaning: '異例な人物', supplement: ''},
+        {word: 'proximity', meaning: '近接', supplement: ''},
+        {word: 'amicable', meaning: '友好的な', supplement: ''},
+        {word: 'repent', meaning: '後悔する', supplement: ''},
+        {word: 'conversion', meaning: '転換', supplement: ''},
+        {word: 'diurnal', meaning: '昼間活動する', supplement: ''},
+        {word: 'ordeal', meaning: '試練', supplement: ''},
+        {word: 'incubate', meaning: '培養する', supplement: ''},
+        {word: 'cumbersome', meaning: '扱いにくい', supplement: ''},
+        {word: 'maternal', meaning: '母親の', supplement: ''},
+        {word: 'spark', meaning: '火花', supplement: ''},
+        {word: 'thorax', meaning: '胸部', supplement: ''},
+        {word: 'preclude', meaning: '排除する', supplement: ''},
+        {word: 'exacerbate', meaning: '悪化する', supplement: ''},
+        {word: 'erratic', meaning: '不規則な', supplement: ''},
+        {word: 'petty', meaning: '些細な', supplement: ''},
+        {word: 'latency period', meaning: '潜伏期間', supplement: ''},
+        {word: 'faction', meaning: '党派', supplement: ''},
+        {word: 'woe', meaning: '悲痛', supplement: ''},
+        {word: 'equivocal', meaning: 'はっきりしない', supplement: ''},
+        {word: 'afflict', meaning: '悩ます', supplement: ''},
+        {word: 'eradicate', meaning: '根絶する', supplement: ''},
+        {word: 'despise', meaning: '軽蔑する', supplement: ''},
+        {word: 'riverbed', meaning: '川底', supplement: ''},
+        {word: 'rudimentary', meaning: '基本的な', supplement: ''},
+        {word: 'static', meaning: '変化のない', supplement: ''},
+        {word: 'benign', meaning: '穏やかな', supplement: ''},
+        {word: 'intermittent', meaning: '断続的な', supplement: ''},
+        {word: 'onlooker', meaning: '傍観者', supplement: ''},
+        {word: 'evasion', meaning: '回避', supplement: ''},
+        {word: 'remorse', meaning: '深い悔恨', supplement: ''},
+        {word: 'cite', meaning: '引用する', supplement: ''},
+        {word: 'oust', meaning: '取り上げる', supplement: ''},
+        {word: 'manipulate', meaning: '巧みに操作する', supplement: ''},
+        {word: 'overwhelm', meaning: '圧倒する', supplement: ''},
+        {word: 'concession', meaning: '譲歩', supplement: ''},
+        {word: 'prone', meaning: '〜する傾向がある', supplement: ''},
+        {word: 'tariff', meaning: '関税', supplement: ''},
+        {word: 'demystify', meaning: '解明する', supplement: ''},
+        {word: 'utmost', meaning: '最大限の', supplement: ''},
+        {word: 'itchy', meaning: 'かゆい', supplement: ''},
+        {word: 'exhaustive', meaning: '完全な', supplement: ''},
+        {word: 'testimony', meaning: '証明', supplement: ''},
+        {word: 'requisite', meaning: '必要な', supplement: ''},
+        {word: 'opportunist', meaning: '日和味主義者', supplement: ''},
+        {word: 'legislation', meaning: '法律', supplement: ''},
+        {word: 'congruence', meaning: '一致', supplement: ''},
+        {word: 'grope', meaning: '手探りする', supplement: ''},
+        {word: 'don', meaning: '着る', supplement: ''},
+        {word: 'ratify', meaning: '批准する', supplement: ''},
+        {word: 'tantalize', meaning: '焦らす', supplement: ''},
+        {word: 'stipulate', meaning: '明記する', supplement: ''},
+        {word: 'clumsy', meaning: '不器用な', supplement: ''},
+        {word: 'resonant', meaning: '朗々とした', supplement: ''},
+        {word: 'exquisite', meaning: 'この上なく素晴らしい', supplement: ''},
+        {word: 'avalanche', meaning: '雪崩', supplement: ''},
+        {word: 'preface', meaning: '序文', supplement: ''},
+        {word: 'enigma', meaning: '謎', supplement: ''},
+        {word: 'bureaucracy', meaning: '官僚政治', supplement: ''},
+        {word: 'per capita', meaning: '一人当たりの', supplement: ''},
+        {word: 'interim', meaning: 'しばらくの間', supplement: ''},
+        {word: 'averse', meaning: '嫌って', supplement: ''},
+        {word: 'startle', meaning: '驚かせる', supplement: ''},
+        {word: 'hefty', meaning: '多量の', supplement: ''},
+        {word: 'incontrovertible', meaning: '議論の余地のない', supplement: ''},
+        {word: 'prolific', meaning: '多作の', supplement: ''},
+        {word: 'stereotype', meaning: '固定観念', supplement: ''},
+        {word: 'perpetual', meaning: '永続的な', supplement: ''},
+        {word: 'stray', meaning: 'それる', supplement: ''},
+        {word: 'dogmatic', meaning: '独断的な', supplement: ''},
+        {word: 'embezzle', meaning: '横領する', supplement: ''},
+        {word: 'statistics', meaning: '統計学', supplement: ''},
+        {word: 'unleash', meaning: '解放する', supplement: ''},
+        {word: 'diligence', meaning: '勤勉な', supplement: ''},
+        {word: 'inhibit', meaning: '抑制する', supplement: ''},
+        {word: 'mountain lion', meaning: 'アメリカライオン', supplement: ''},
+        {word: 'visionary', meaning: '先見の明がある', supplement: ''},
+        {word: 'preponderance', meaning: '優勢', supplement: ''},
+        {word: 'canine', meaning: '犬の', supplement: ''},
+        {word: 'pliable', meaning: '曲げやすい', supplement: ''},
+        {word: 'provincial', meaning: '州の', supplement: ''},
+        {word: 'smuggle', meaning: '密輸する', supplement: ''},
+        {word: 'thorn', meaning: 'とげ', supplement: ''},
+        {word: 'subsidize', meaning: '補助金を支給する', supplement: ''},
+        {word: 'credential', meaning: '信任状', supplement: ''},
+        {word: 'stagnant', meaning: 'よどんだ', supplement: ''},
+        {word: 'disruption', meaning: '混乱', supplement: ''},
+        {word: 'token', meaning: 'トークン', supplement: ''},
+        {word: 'induce', meaning: '誘発する', supplement: ''},
+        {word: 'glimpse', meaning: 'ちらりとみる', supplement: ''},
+        {word: 'sanction', meaning: '認可', supplement: ''},
+        {word: 'impulse', meaning: '衝動', supplement: ''},
+        {word: 'luminary', meaning: '発光体', supplement: ''},
+        {word: 'rehabilitate', meaning: 'リハビリする', supplement: ''},
+        {word: 'rhetoric', meaning: '修辞学', supplement: ''},
+        {word: 'gastric ulcer', meaning: '胃潰瘍', supplement: ''},
+        {word: 'equilibrium', meaning: '釣り合い', supplement: ''},
+        {word: 'subsequent', meaning: 'その後の', supplement: ''},
+        {word: 'underpin', meaning: '支える', supplement: ''},
+        {word: 'illusion', meaning: '幻想', supplement: ''},
+        {word: 'sporadic', meaning: '散発的な', supplement: ''},
+        {word: 'founder', meaning: '創設者', supplement: ''},
+        {word: 'exemplify', meaning: '例証する', supplement: ''},
+        {word: 'idiosyncrasy', meaning: '特異性', supplement: ''},
+        {word: 'Uranus', meaning: '天王星', supplement: ''},
+        {word: 'austere', meaning: '厳しい', supplement: ''},
+        {word: 'condolence', meaning: 'お悔やみ', supplement: ''},
+        {word: 'skeptic', meaning: '懐疑的な', supplement: ''},
+        {word: 'ambiguous', meaning: '曖昧な', supplement: ''},
+        {word: 'practitioner', meaning: '開業者', supplement: ''},
+        {word: 'lubricate', meaning: 'なめらかにする', supplement: ''},
+        {word: 'revenue', meaning: '歳入', supplement: ''},
+        {word: 'purge', meaning: '取り除く', supplement: ''},
+        {word: 'traumatic', meaning: 'トラウマの', supplement: ''},
+        {word: 'convene', meaning: '招集する', supplement: ''},
+        {word: 'legacy', meaning: '遺産', supplement: ''},
+        {word: 'peer', meaning: '同僚', supplement: ''},
+        {word: 'pretentious', meaning: 'うぬぼれた', supplement: ''},
+        {word: 'obsolete', meaning: '古くなった', supplement: ''},
+        {word: 'autonomous', meaning: '自治権のある', supplement: ''},
+        {word: 'legitimate', meaning: '正当な', supplement: ''},
+        {word: 'definitive', meaning: '最終的な', supplement: ''},
+        {word: 'novelty', meaning: '珍しい', supplement: ''},
+        {word: 'maritime', meaning: '海事の', supplement: ''},
+        {word: 'alert', meaning: '用心深い', supplement: ''},
+        {word: 'recede', meaning: '後退する', supplement: ''},
+        {word: 'consequently', meaning: '結果として', supplement: ''},
+        {word: 'acquire', meaning: '手にいれる', supplement: ''},
+        {word: 'extravagant', meaning: '贅沢な', supplement: ''},
+        {word: 'seep', meaning: '水が漏れる', supplement: ''},
+        {word: 'glitter', meaning: 'キラキラ輝く', supplement: ''},
+        {word: 'additive', meaning: '添加物', supplement: ''},
+        {word: 'agenda', meaning: '議題', supplement: ''},
+        {word: 'intriguing', meaning: '興味をそそる', supplement: ''},
+        {word: 'massacre', meaning: '大虐殺', supplement: ''},
+        {word: 'censor', meaning: '校閲する', supplement: ''},
+        {word: 'outgoing', meaning: '社交的な', supplement: ''},
+        {word: 'fortress', meaning: '要塞', supplement: ''},
+        {word: 'gloomy', meaning: '憂鬱な', supplement: ''},
+        {word: 'concede', meaning: '認める', supplement: ''},
+        {word: 'universal', meaning: '普遍的な', supplement: ''},
+        {word: 'lieu', meaning: '場所', supplement: ''},
+        {word: 'preeminent', meaning: '卓越した', supplement: ''},
+        {word: 'inflate', meaning: '膨らませる', supplement: ''},
+        {word: 'incomprehensible', meaning: '理解できない', supplement: ''},
+        {word: 'momentum', meaning: '運動量', supplement: ''},
+        {word: 'barren', meaning: '不毛の', supplement: ''},
+        {word: 'pertinent', meaning: '関連する', supplement: ''},
+        {word: 'elated', meaning: '大得意の', supplement: ''},
+        {word: 'mob', meaning: '群衆', supplement: ''},
+        {word: 'jellyfish', meaning: 'クラゲ', supplement: ''},
+        {word: 'havoc', meaning: '大混乱', supplement: ''},
+        {word: 'eclectic', meaning: '折衷的な', supplement: ''},
+        {word: 'obstinate', meaning: '頑固な', supplement: ''},
+        {word: 'standstill', meaning: '停止', supplement: ''},
+        {word: 'fervor', meaning: '熱情', supplement: ''},
+        {word: 'tuberculosis', meaning: '結核', supplement: ''},
+        {word: 'incisive', meaning: '明敏な', supplement: ''},
+        {word: 'nautical', meaning: '航海の', supplement: ''},
+        {word: 'deplete', meaning: '使い果たす', supplement: ''},
+        {word: 'defendant', meaning: '被告', supplement: ''},
+        {word: 'improbable', meaning: 'ありそうもない', supplement: ''},
+        {word: 'decay', meaning: '衰退する', supplement: ''},
+        {word: 'nectar', meaning: '植物の蜜', supplement: ''},
+        {word: 'concise', meaning: '簡潔な', supplement: ''},
+        {word: 'ascendancy', meaning: '優位', supplement: ''},
+        {word: 'lean', meaning: '寄りかかる・傾ける', supplement: ''},
+        {word: 'gargle', meaning: 'うがいをする', supplement: ''},
+        {word: 'abolish', meaning: '廃止する', supplement: ''},
+        {word: 'devastate', meaning: '荒廃させる・打ちのめす', supplement: ''},
+        {word: 'shudder', meaning: '（恐怖や嫌悪で）身震いする', supplement: ''},
+        {word: 'illiterate', meaning: '読み書きのできない', supplement: ''},
+        {word: 'wedge', meaning: 'くさび・押し込む', supplement: ''},
+        {word: 'living standard', meaning: '生活水準', supplement: ''},
+        {word: 'hypothetical', meaning: '仮定の・仮説上の', supplement: ''},
+        {word: 'plateau', meaning: '高原・台地', supplement: ''},
+        {word: 'dismal', meaning: '陰気な・憂うつな', supplement: ''},
+        {word: 'parameter', meaning: '（測定可能な）要因・パラメーター', supplement: ''},
+        {word: 'phobia', meaning: '恐怖症・病的恐怖', supplement: ''},
+        {word: 'posterity', meaning: '子孫', supplement: ''},
+        {word: 'saturate', meaning: 'すっかり湿らす・満たす', supplement: ''},
+        {word: 'compensate', meaning: '補償する・埋め合わせる', supplement: ''},
+        {word: 'fanaticism', meaning: '熱狂・狂信', supplement: ''},
+        {word: 'provision', meaning: '条項・供給', supplement: ''},
+        {word: 'cease', meaning: 'やめる・終わる', supplement: ''},
+        {word: 'presumption', meaning: '推定・仮定', supplement: ''},
+        {word: 'suffocate', meaning: '窒息させる', supplement: ''},
+        {word: 'sore', meaning: '痛い・いらいらした', supplement: ''},
+        {word: 'mystical', meaning: '神秘的な・秘教の', supplement: ''},
+        {word: 'forbearance', meaning: '我慢・忍耐', supplement: ''},
+        {word: 'imaginable', meaning: '想像できる', supplement: ''},
+        {word: 'monumental', meaning: '（程度が）途方もない・非常に大きい', supplement: ''},
+        {word: 'pueblo', meaning: 'プエブロ族', supplement: ''},
+        {word: 'haphazard', meaning: 'でたらめの・偶然の・無計画な', supplement: ''},
+        {word: 'precede', meaning: '先導する・先立つ', supplement: ''},
+        {word: 'soothe', meaning: '和らげる・なだめる', supplement: ''},
+        {word: 'prompt', meaning: '迅速な・即座の', supplement: ''},
+        {word: 'depict', meaning: '描写する・描く', supplement: ''},
+        {word: 'reservoir', meaning: '貯水池・貯蔵所', supplement: ''},
+        {word: 'propriety', meaning: '礼儀正しさ・作法・適切さ', supplement: ''},
+        {word: 'speculate', meaning: '推測する・考察する', supplement: ''},
+        {word: 'quota', meaning: '割り当て・分担', supplement: ''},
+        {word: 'footnote', meaning: '脚注', supplement: ''},
+        {word: 'outnumber', meaning: '数で勝る', supplement: ''},
+        {word: 'curtail', meaning: '削減する・短縮する', supplement: ''},
+        {word: 'restless', meaning: '眠れない・休まらない・不安な', supplement: ''},
+        {word: 'augment', meaning: '増大させる・増やす', supplement: ''},
+        {word: 'contingency', meaning: '不測の事態・偶然性', supplement: ''},
+        {word: 'benevolent', meaning: '慈善深い・親切な', supplement: ''},
+        {word: 'scorch', meaning: '焦がす・焼く', supplement: ''},
+        {word: 'burrow', meaning: '（動物の）穴・隠れ場所', supplement: ''},
+        {word: 'terminate', meaning: '終わらせる・終了させる', supplement: ''},
+        {word: 'wax', meaning: 'うるうるする・ワックスをかける', supplement: ''},
+        {word: 'salient', meaning: '目立つ・際立った', supplement: ''},
+        {word: 'perplex', meaning: '当惑させる・困らせる', supplement: ''},
+        {word: 'provoke', meaning: '怒らせる・引き起こす', supplement: ''},
+        {word: 'compatible', meaning: '互換性のある・矛盾のない', supplement: ''},
+        {word: 'divert', meaning: 'そらす・迂回させる', supplement: ''},
+        {word: 'temporary', meaning: '一時的な・臨時の', supplement: ''},
+        {word: 'lagoon', meaning: '潟湖・小さな沼', supplement: ''},
+        {word: 'plague', meaning: '疫病・災害', supplement: ''},
+        {word: 'elaborate', meaning: '詳しく説明する・入念な', supplement: ''},
+        {word: 'consolidate', meaning: '合併する・強固にする', supplement: ''},
+        {word: 'inert', meaning: '不活性の・不活発な', supplement: ''},
+        {word: 'precise', meaning: '正確な・精密な', supplement: ''},
+        {word: 'vowel', meaning: '母音', supplement: ''},
+        {word: 'irrelevant', meaning: '関連のない・見当違いの', supplement: ''},
+        {word: 'trough', meaning: '波の谷・最低点', supplement: ''},
+        {word: 'valid', meaning: '有効な・合法的な', supplement: ''},
+        {word: 'incentive', meaning: '刺激・誘因', supplement: ''},
+        {word: 'pathetic', meaning: '痛ましい・哀れな', supplement: ''},
+        {word: 'growl', meaning: '（犬などが）うなる', supplement: ''},
+        {word: 'expiration', meaning: '（契約期間などの）満了・満期', supplement: ''},
+        {word: 'perfunctory', meaning: 'いい加減な・やる気のない', supplement: ''},
+        {word: 'forerunner', meaning: '先駆者・前身・前ぶれ', supplement: ''},
+        {word: 'influenza', meaning: 'インフルエンザ', supplement: ''},
+        {word: 'prevail', meaning: '広く行き渡る', supplement: ''},
+        {word: 'ascribe', meaning: '～のせいにする', supplement: ''},
+        {word: 'right angle', meaning: '直角', supplement: ''},
+        {word: 'comply', meaning: '（規則・基準などに）従う', supplement: ''},
+        {word: 'enhance', meaning: '高める・増す', supplement: ''},
+        {word: 'ponder', meaning: '熟考する', supplement: ''},
+        {word: 'timid', meaning: '臆病な', supplement: ''},
+        {word: 'bill', meaning: '法案・請求書・請求書を送る', supplement: ''},
+        {word: 'hoist', meaning: 'つり上げる・持ち上げる', supplement: ''},
+        {word: 'pest', meaning: '害虫・疫病', supplement: ''},
+        {word: 'obese', meaning: '肥満した', supplement: ''},
+        {word: 'fleet', meaning: '艦隊・船団', supplement: ''},
+        {word: 'manifest', meaning: '明白な・はっきりとした', supplement: ''},
+        {word: 'foreshadow', meaning: '予兆となる・暗示する', supplement: ''},
+        {word: 'menace', meaning: '脅迫・おどし・危険人物', supplement: ''},
+        {word: 'ascend', meaning: '上昇する・登る', supplement: ''},
+        {word: 'industrious', meaning: '勤勉な', supplement: ''},
+        {word: 'trivial', meaning: 'ささいな・つまらない', supplement: ''},
+        {word: 'furor', meaning: '興奮・激怒', supplement: ''},
+        {word: 'indulge', meaning: '甘やかす・夢中になる', supplement: ''},
+        {word: 'capricious', meaning: '気まぐれな・変わりやすい', supplement: ''},
+        {word: 'introvert', meaning: '内向的な・内向性の人', supplement: ''},
+        {word: 'retract', meaning: '取り消す・引っ込める', supplement: ''},
+        {word: 'waive', meaning: '（権利などを）自発的に放棄する', supplement: ''},
+        {word: 'monetary', meaning: '通貨の・金融上の・金銭の', supplement: ''},
+        {word: 'concord', meaning: '一致・調和・協調', supplement: ''},
+        {word: 'rebel', meaning: '反逆者', supplement: ''},
+        {word: 'prototype', meaning: '原型・模型・原型品・試作品', supplement: ''},
+        {word: 'finite', meaning: '限られた・有限の', supplement: ''},
+        {word: 'detached', meaning: '公平な・独立した', supplement: ''},
+        {word: 'criterion', meaning: '（判断・評価の）基準・標準', supplement: ''},
+        {word: 'satirical', meaning: '風刺的な・皮肉な', supplement: ''},
+        {word: 'bold', meaning: '大胆な・勇敢な', supplement: ''},
+        {word: 'compromise', meaning: '妥協する・譲歩する', supplement: ''},
+        {word: 'hurl', meaning: '強く投げつける・放り投げる', supplement: ''},
+        {word: 'attribute', meaning: '（功績・結果などを）のせいにする', supplement: ''},
+        {word: 'turbulence', meaning: '大荒れ・動揺・乱気流', supplement: ''},
+        {word: 'principal', meaning: '（利子に対して）元金・校長', supplement: ''},
+        {word: 'concur', meaning: '賛成する・同時に起こる', supplement: ''},
+        {word: 'install', meaning: '取り付ける・設置する', supplement: ''},
+        {word: 'erroneous', meaning: '誤った・間違った', supplement: ''},
+        {word: 'mandate', meaning: '権限・命令', supplement: ''},
+        {word: 'still', meaning: 'じっとしている・静止した', supplement: ''},
+        {word: 'rigor', meaning: '厳しさ・厳密さ', supplement: ''},
+        {word: 'arduously', meaning: '骨を折って・苦労して', supplement: ''},
+        {word: 'imposing', meaning: '印象的な・人目を引く・堂々とした', supplement: ''},
+        {word: 'inertia', meaning: '慣性・惰性・不活発・ものぐさ', supplement: ''},
+        {word: 'texture', meaning: '（布地・皮膚などの）感触', supplement: ''},
+        {word: 'imprudent', meaning: '軽率な・思慮の浅い・無分別な', supplement: ''},
+        {word: 'perspire', meaning: '発汗する・汗をかく', supplement: ''},
+        {word: 'extol', meaning: '褒めそやす・激賞する', supplement: ''},
+        {word: 'irreparable', meaning: '（損害・損傷などが）', supplement: ''},
+        {word: 'emit', meaning: '（ガス・光・熱などを）発する・放出する', supplement: ''},
+        {word: 'withhold', meaning: '差し控える・（', supplement: ''},
+        {word: 'dump', meaning: '投棄する・捨てる', supplement: ''},
+        {word: 'consent', meaning: '同意・承諾・一致', supplement: ''},
+        {word: 'renewal', meaning: '更新・再開・再建', supplement: ''},
+        {word: 'expedite', meaning: 'はかどらせる・促進する', supplement: ''},
+        {word: 'notorious', meaning: '悪名高い', supplement: ''},
+        {word: 'bedrock', meaning: '基盤・基礎・根底', supplement: ''},
+        {word: 'pathology', meaning: '病理学', supplement: ''},
+        {word: 'scramble', meaning: 'よじ登る・先を争う', supplement: ''},
+        {word: 'didactic', meaning: '教訓的な・説教的な', supplement: ''},
+        {word: 'forgo', meaning: '控える・なしで済ませる', supplement: ''},
+        {word: 'beset', meaning: '悩ませる・つきまとう', supplement: ''},
+        {word: 'aesthetic', meaning: '美の・芸術的な', supplement: ''},
+        {word: 'susceptible', meaning: '影響を受けやすい・感染しやすい', supplement: ''},
+        {word: 'compulsion', meaning: '強制・衝動', supplement: ''},
+        {word: 'spectrum', meaning: 'スペクトル・波長・範囲', supplement: ''},
+        {word: 'partisan', meaning: '熱心な支持者・同党派', supplement: ''},
+        {word: 'hug', meaning: '抱きしめる', supplement: ''},
+        {word: 'metabolism', meaning: '新陳代謝・物質代謝', supplement: ''},
+        {word: 'frigid', meaning: '極寒の・冷淡な', supplement: ''},
+        {word: 'pervasive', meaning: '広がった・浸透する', supplement: ''},
+        {word: 'retreat', meaning: '退却する・撤退する', supplement: ''},
+        {word: 'doom', meaning: '運命づける', supplement: ''},
+        {word: 'apparatus', meaning: '器具・装置', supplement: ''},
+        {word: 'erupt', meaning: '噴火する', supplement: ''},
+        {word: 'arbitrary', meaning: '独断的な・任意の', supplement: ''},
+        {word: 'supplementary', meaning: '追加の・補充的な', supplement: ''},
+        {word: 'commitment', meaning: '約束・責任', supplement: ''},
+        {word: 'literacy', meaning: '読み書き能力', supplement: ''},
+        {word: 'aggravate', meaning: '悪化させる', supplement: ''},
+        {word: 'redefine', meaning: '再評価する', supplement: ''},
+        {word: 'heed', meaning: '注意を払う', supplement: ''},
+        {word: 'apprehend', meaning: '懸念する・恐れる', supplement: ''},
+        {word: 'roost', meaning: 'ねぐら・止まる', supplement: ''},
+        {word: 'ignite', meaning: '点火する', supplement: ''},
+        {word: 'adversary', meaning: '敵・対戦相手', supplement: ''},
+        {word: 'denounce', meaning: '公然と非難する', supplement: ''},
+        {word: 'particle', meaning: '粒子', supplement: ''},
+        {word: 'foe', meaning: '敵', supplement: ''},
+        {word: 'abbreviate', meaning: '省略する', supplement: ''},
+        {word: 'dilute', meaning: '薄める・弱める', supplement: ''},
+        {word: 'jeopardy', meaning: '危険', supplement: ''},
+        {word: 'linear', meaning: '線形の', supplement: ''},
+        {word: 'counterfeit', meaning: '偽造の', supplement: ''},
+        {word: 'repertoire', meaning: 'レパートリー', supplement: ''},
+        {word: 'proliferation', meaning: '拡散', supplement: ''},
+        {word: 'fingerprint', meaning: '指紋', supplement: ''},
+        {word: 'dissolution', meaning: '消滅・解散', supplement: ''},
+        {word: 'negligence', meaning: '怠慢・手抜き', supplement: ''},
+        {word: 'bankruptcy', meaning: '倒産', supplement: ''},
+        {word: 'reminiscence', meaning: '思い出', supplement: ''},
+        {word: 'prohibit', meaning: '禁止する', supplement: ''},
+        {word: 'liquidate', meaning: '清算する', supplement: ''},
+        {word: 'scar', meaning: '傷跡', supplement: ''},
+        {word: 'diabetic', meaning: '糖尿病の', supplement: ''},
+        {word: 'debris', meaning: 'がれき・破片', supplement: ''},
+        {word: 'discriminating', meaning: '識別力のある', supplement: ''},
+        {word: 'sympathize', meaning: '同情する', supplement: ''},
+        {word: 'plausible', meaning: 'もっともらしい', supplement: ''},
+        {word: 'ironic', meaning: '皮肉な', supplement: ''},
+        {word: 'tumor', meaning: '腫瘍', supplement: ''},
+        {word: 'tedious', meaning: '退屈な', supplement: ''},
+        {word: 'placid', meaning: '穏やかな', supplement: ''},
+        {word: 'ethnology', meaning: '民族学', supplement: ''},
+        {word: 'acclaim', meaning: '賞賛する', supplement: ''},
+        {word: 'profound', meaning: '深い・難解な', supplement: ''},
+        {word: 'disdain', meaning: '軽蔑する', supplement: ''},
+        {word: 'vigor', meaning: '活力・活気', supplement: ''},
+        {word: 'treaty', meaning: '条約', supplement: ''},
+        {word: 'submit', meaning: '提出する', supplement: ''},
+        {word: 'rebut', meaning: '反論する', supplement: ''},
+        {word: 'meteorology', meaning: '気象学', supplement: ''},
+        {word: 'fortification', meaning: '要塞化', supplement: ''},
+        {word: 'discretion', meaning: '裁量・思慮分別', supplement: ''},
+        {word: 'wander', meaning: 'ぶらつく', supplement: ''},
+        {word: 'impromptu', meaning: '即興の', supplement: ''},
+        {word: 'contagious', meaning: '感染性の', supplement: ''},
+        {word: 'veterinarian', meaning: '獣医', supplement: ''},
+        {word: 'refurbish', meaning: '改装する', supplement: ''},
+        {word: 'aggregate', meaning: '集計する', supplement: ''},
+        {word: 'elastic', meaning: '弾性の', supplement: ''},
+        {word: 'wary', meaning: '用心深い', supplement: ''},
+        {word: 'judicious', meaning: '賢明な', supplement: ''},
+        {word: 'zinc', meaning: '亜鉛', supplement: ''},
+        {word: 'vow', meaning: '誓う', supplement: ''},
+        {word: 'converse', meaning: '逆の・会話する', supplement: ''},
+        {word: 'strife', meaning: '争い', supplement: ''},
+        {word: 'remedy', meaning: '治療・解決策', supplement: ''},
+        {word: 'corrupt', meaning: '腐敗した', supplement: ''},
+        {word: 'memorialize', meaning: '記念する', supplement: ''},
+        {word: 'allocate', meaning: '割り当てる', supplement: ''},
+        {word: 'sewer', meaning: '下水道', supplement: ''},
+        {word: 'standpoint', meaning: '観点', supplement: ''},
+        {word: 'paleontology', meaning: '古生物学', supplement: ''},
+        {word: 'haunt', meaning: 'たびたび訪れる', supplement: ''},
+        {word: 'compile', meaning: '編纂する', supplement: ''},
+        {word: 'uneasy', meaning: '不安な', supplement: ''},
+        {word: 'acute', meaning: '鋭い', supplement: ''},
+        {word: 'lick', meaning: '舐める', supplement: ''},
+        {word: 'censure', meaning: '非難する', supplement: ''},
+        {word: 'crude', meaning: '粗野な・未完成の', supplement: ''},
+        {word: 'outlet', meaning: '出口', supplement: ''},
+        {word: 'relief', meaning: '安心・救済', supplement: ''},
+        {word: 'acoustic', meaning: '音響の', supplement: ''},
+        {word: 'compel', meaning: '強制する', supplement: ''},
+        {word: 'hamper', meaning: '妨害する', supplement: ''},
+        {word: 'nocturnal', meaning: '夜行性の', supplement: ''},
+        {word: 'amiable', meaning: '愛想の良い', supplement: ''},
+        {word: 'reserve', meaning: '蓄える', supplement: ''},
+        {word: 'detect', meaning: '検出する', supplement: ''},
+        {word: 'abrasive', meaning: '研磨剤の', supplement: ''},
+        {word: 'striking', meaning: '著しい', supplement: ''},
+        {word: 'deadlock', meaning: '行き詰まり', supplement: ''},
+        {word: 'archetype', meaning: '典型例', supplement: ''},
+        {word: 'consensus', meaning: '合意', supplement: ''},
+        {word: 'frown', meaning: '眉をひそめる', supplement: ''},
+        {word: 'blast', meaning: '爆破する', supplement: ''},
+        {word: 'intact', meaning: '無傷の', supplement: ''},
+        {word: 'cohesive', meaning: '結束力のある', supplement: ''},
+        {word: 'acid', meaning: '酸性の', supplement: ''},
+        {word: 'bearish', meaning: '弱気の・(熊のように)粗暴な', supplement: ''},
+        {word: 'indifferent', meaning: '無関心な・中立の', supplement: ''},
+        {word: 'practicable', meaning: '実行可能な・実用的な', supplement: ''},
+        {word: 'recession', meaning: '不況・景気後退', supplement: ''},
+        {word: 'thatch', meaning: 'わらぶき屋根・屋根ふき材', supplement: ''},
+        {word: 'maneuver', meaning: '(車などの)巧みな操縦・作戦行動', supplement: ''},
+        {word: 'antipathy', meaning: '嫌悪・反感', supplement: ''},
+        {word: 'indigestion', meaning: '消化不良', supplement: ''},
+        {word: 'obsess', meaning: '取りつかれる・悩まされる', supplement: ''},
+        {word: 'conclusive', meaning: '決定的な・最終的な', supplement: ''},
+        {word: 'acquisition', meaning: '獲得・習得', supplement: ''},
+        {word: 'armored', meaning: '装甲した', supplement: ''},
+        {word: 'condone', meaning: '許す・大目に見る', supplement: ''},
+        {word: 'captivity', meaning: '捕らわれの身・監禁・拘留', supplement: ''},
+        {word: 'turmoil', meaning: '混乱・動揺', supplement: ''},
+        {word: 'languish', meaning: '衰える・やつれる', supplement: ''},
+        {word: 'uniformity', meaning: '均一・統一性', supplement: ''},
+        {word: 'patriot', meaning: '愛国者', supplement: ''},
+        {word: 'constituency', meaning: '(特定の)有権者・選挙区', supplement: ''},
+        {word: 'narrative', meaning: '物語・話', supplement: ''},
+        {word: 'embed', meaning: '埋め込む・埋める', supplement: ''},
+        {word: 'banal', meaning: 'ありふれた・陳腐な', supplement: ''},
+        {word: 'contend', meaning: '(困難などと)対処する・争う', supplement: ''},
+        {word: 'rigid', meaning: '硬直した・厳格な', supplement: ''},
+        {word: 'dissent', meaning: '異議を唱える・不賛成', supplement: ''},
+        {word: 'aloof', meaning: '離れて・距離を置いて', supplement: ''},
+        {word: 'divorce', meaning: '分離する・離婚する', supplement: ''},
+        {word: 'critical', meaning: '批判的な・重大な', supplement: ''},
+        {word: 'somber', meaning: '陰気な・憂うつな', supplement: ''},
+        {word: 'reminiscent', meaning: '連想させる・追憶の', supplement: ''},
+        {word: 'landfill', meaning: 'ごみ埋め立て地', supplement: ''},
+        {word: 'expel', meaning: '放出する・排出する', supplement: ''},
+        {word: 'sterilize', meaning: '殺菌する・不妊にする', supplement: ''},
+        {word: 'leak', meaning: '漏れる・漏洩する', supplement: ''},
+        {word: 'apprehension', meaning: '懸念・不安・恐れ', supplement: ''},
+        {word: 'reclaimed land', meaning: '埋め立て地・開墾地', supplement: ''},
+        {word: 'disposal', meaning: '処分・処理・配置', supplement: ''},
+        {word: 'mating season', meaning: '繁殖期・交尾期', supplement: ''},
+        {word: 'corrosive', meaning: '腐食性の・侵食する', supplement: ''},
+        ];
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const flashcard = document.getElementById('flashcard');
+            const wordElement = document.getElementById('word');
+            const meaningElement = document.getElementById('meaning');
+            const supplementElement = document.getElementById('supplement');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const counterElement = document.getElementById('counter'); // カウンタ要素を取得
+
+            let currentIndex = 0;
+            let viewCount = 0; // 単語が表示された回数
+
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            const shuffledWords = shuffleArray(words);
+
+            updateCard();
+
+            function toggleCard() {
+                if (meaningElement.style.display === 'none') {
+                    meaningElement.style.display = 'block';
+                    if (shuffledWords[currentIndex].supplement) {
+                        supplementElement.style.display = 'block';
+                    }
+                    updateCounter(); // カウンタを更新
+                } else {
+                    meaningElement.style.display = 'none';
+                    supplementElement.style.display = 'none';
+                }
+            }
+
+            function showPrevWord() {
+                currentIndex = (currentIndex === 0) ? shuffledWords.length - 1 : currentIndex - 1;
+                updateCard();
+            }
+
+            function showNextWord() {
+                currentIndex = (currentIndex === shuffledWords.length - 1) ? 0 : currentIndex + 1;
+                updateCard();
+            }
+
+            function updateCard() {
+                wordElement.textContent = shuffledWords[currentIndex].word;
+                meaningElement.textContent = shuffledWords[currentIndex].meaning;
+                supplementElement.textContent = shuffledWords[currentIndex].supplement;
+                wordElement.style.display = 'block';
+                meaningElement.style.display = 'none';
+                supplementElement.style.display = 'none';
+            }
+
+            function flyOutWord(word) {
+                const tempWord = document.createElement('div');
+                tempWord.textContent = word;
+                tempWord.className = 'fly-out';
+
+                // フラッシュカードの中心から飛ばす
+                const flashcardRect = flashcard.getBoundingClientRect();
+                const centerX = flashcardRect.left + flashcardRect.width / 2;
+                const centerY = flashcardRect.top + flashcardRect.height / 2;
+
+                // ランダムな座標を生成（全体的に満遍なく）
+                const randomX = (Math.random() < 0.5 ? 1 : -1) * (Math.random() * 500 + 150);
+                const randomY = (Math.random() < 0.5 ? 1 : -1) * (Math.random() * 200 + 150);
+
+                tempWord.style.setProperty('--translate-x', `${randomX}px`);
+                tempWord.style.setProperty('--translate-y', `${randomY}px`);
+                tempWord.style.left = `${centerX}px`;
+                tempWord.style.top = `${centerY}px`;
+
+                // ランダムな角度を設定
+                const randomAngle = Math.random() * 360; 
+                tempWord.style.transform = `rotate(${randomAngle}deg)`;
+
+                document.body.appendChild(tempWord);
+            }
+
+            function updateCounter() {
+                viewCount++;
+                counterElement.textContent = `表示された単語数: ${viewCount}`;
+            }
+
+            document.addEventListener('keydown', function(event) {
+                if (event.code === 'Space') {
+                    event.preventDefault();
+                    toggleCard();
+                } else if (event.code === 'ArrowRight') {
+                    showNextWord();
+                } else if (event.code === 'ArrowLeft') {
+                    showPrevWord();
+                } else if (event.code === 'ArrowUp' || event.code === 'ArrowDown') {
+                    flyOutWord(shuffledWords[currentIndex].word);
+                }
+            });
+
+            prevBtn.addEventListener('click', showPrevWord);
+            nextBtn.addEventListener('click', showNextWord);
+            flashcard.addEventListener('click', toggleCard);
+        });
+    </script>
+</body>
+</html>
