@@ -13,7 +13,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
         }
 
         h1 {
@@ -21,11 +21,11 @@
         }
 
         .container {
-            width: 300px;
+            width: 90%;
+            max-width: 400px;
             background-color: #fff;
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
             text-align: center;
             padding: 20px;
         }
@@ -48,9 +48,12 @@
             margin-top: 20px;
             display: flex;
             justify-content: space-between;
+            width: 100%;
         }
 
         button {
+            flex: 1;
+            margin: 0 5px;
             padding: 10px 20px;
             font-size: 16px;
             border: none;
@@ -64,10 +67,44 @@
             background-color: #0056b3;
         }
 
+        button:focus {
+            outline: none;
+        }
+
         p {
             font-size: 14px;
             color: #555;
             margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .word {
+                font-size: 20px;
+            }
+
+            .meaning {
+                font-size: 18px;
+            }
+
+            button {
+                font-size: 14px;
+                padding: 8px 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .word {
+                font-size: 18px;
+            }
+
+            .meaning {
+                font-size: 16px;
+            }
+
+            button {
+                font-size: 12px;
+                padding: 6px 10px;
+            }
         }
     </style>
 </head>
@@ -1009,11 +1046,7 @@
         }
 
         function toggleMeaning() {
-            if (meaningElement.style.display === 'none') {
-                meaningElement.style.display = 'block';
-            } else {
-                meaningElement.style.display = 'none';
-            }
+            meaningElement.style.display = (meaningElement.style.display === 'none') ? 'block' : 'none';
         }
 
         function showPrevWord() {
